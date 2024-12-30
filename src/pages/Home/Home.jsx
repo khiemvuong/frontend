@@ -12,7 +12,7 @@ import party from "../../assets/img/HomePage/partyImg.jpg";
 import pool from "../../assets/img/HomePage/pool3.jpg";
 import fitness from "../../assets/img/HomePage/fitness.jpg";
 import img9 from "../../assets/img/Rooms/room13.jpg";
-import Sidebar from "../../components/Sidebar/Sidebar";
+import Sidebar from "../../components/SideBar/Sidebar";
 import Rating from "../../components/Rating/Rating";
 import { RiDoubleQuotesR } from "react-icons/ri";
 import User1 from "../../assets/img/user1.png";

@@ -1,10 +1,13 @@
-import React, { useState, useContext, useEffect } from "react";
-import { addRoom } from "../../services/RoomService";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useContext } from "react";
+import { getRoomById, updateRoom } from "../../services/RoomService";
+import { useParams } from "react-router-dom";
+import User1 from "../../assets/img/user1.png";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { TiEyeOutline } from "react-icons/ti";
+import { CiEdit } from "react-icons/ci";
+import { MdOutlineDeleteOutline } from "react-icons/md";
 import { RoomContext } from "../../context/RoomContext";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
-
 import {
   FaWifi,
   FaCoffee,
@@ -16,11 +19,20 @@ import {
   FaCocktail,
 } from "react-icons/fa";
 
-const AddRoom = () => {
-  const { fetchRoom } = useContext(RoomContext);
-  const navigate = useNavigate();
+const facilities = [
+  { name: "drinkInfo", label: "Drink Available", icon: <FaCocktail /> },
+  { name: "gymInfo", label: "Gym Available", icon: <FaStopwatch /> },
+  { name: "breakfastInfo", label: "Breakfast Included", icon: <FaHotdog /> },
+  { name: "poolInfo", label: "Pool Access", icon: <FaSwimmingPool /> },
+  { name: "parkingInfo", label: "Parking Available", icon: <FaParking /> },
+  { name: "bathInfo", label: "Bath Included", icon: <FaBath /> },
+  { name: "coffeeInfo", label: "Coffee Available", icon: <FaCoffee /> },
+  { name: "wifiInfo", label: "WiFi Included", icon: <FaWifi /> },
+];
 
-  const [newRoom, setNewRoom] = useState({
+const UpdateRoom = () => {
+  const { fetchRoom } = useContext(RoomContext);
+  const [room, setRoom] = useState({
     roomType: "",
     roomSize: "",
     roomPrice: "",
@@ -28,75 +40,86 @@ const AddRoom = () => {
     roomCapacity: "",
     roomAmount: "",
     roomDescription: "",
-    roomPhotoUrl: null,
-    drinkInfo: false,
-    gymInfo: false,
-    breakfastInfo: false,
-    poolInfo: false,
-    parkingInfo: false,
-    bathInfo: false,
-    coffeeInfo: false,
-    wifiInfo: false,
+    roomPhotoUrl: "",
+    facility: {
+      drinkInfo: false,
+      gymInfo: false,
+      breakfastInfo: false,
+      poolInfo: false,
+      parkingInfo: false,
+      bathInfo: false,
+      coffeeInfo: false,
+      wifiInfo: false,
+    },
   });
 
   const [imageReview, setImageReview] = useState("");
+  const navigate = useNavigate();
 
-  const handleRoomInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewRoom({ ...newRoom, [name]: value });
-  };
+  const { roomId } = useParams();
 
   const handleImageChange = (e) => {
     const selectedImage = e.target.files[0];
-
-    setNewRoom({ ...newRoom, roomPhotoUrl: selectedImage });
+    setRoom({ ...room, roomPhotoUrl: selectedImage });
     setImageReview(URL.createObjectURL(selectedImage));
   };
 
   const handleFacilityChange = (e) => {
     const { name, checked } = e.target;
-    setNewRoom({ ...newRoom, [name]: checked });
+    setRoom((prevRoom) => ({
+      ...prevRoom,
+      facility: {
+        ...prevRoom.facility,
+        [name]: checked,
+      },
+    }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const success = await addRoom(newRoom);
-    // console.log(success);
-    if (success) {
-      // Reset form
+  const handleRoomInputChange = (e) => {
+    const { name, value } = e.target; // Lấy name và value từ input
+    setRoom({ ...room, [name]: value }); // Cập nhật giá trị trong state room
+  };
 
-      // setNewRoom({
-      //   roomType: "",
-      //   roomSize: "",
-      //   roomPrice: "",
-      //   roomStatus: "",
-      //   roomCapacity: "",
-      //   roomAmount: "",
-      //   roomDescription: "",
-      //   roomPhotoUrl: null,
-      //   drinkInfo: false,
-      //   gymInfo: false,
-      //   breakfastInfo: false,
-      //   poolInfo: false,
-      //   parkingInfo: false,
-      //   bathInfo: false,
-      //   coffeeInfo: false,
-      //   wifiInfo: false,
-      // });
-      // setImageReview("");
+  useEffect(() => {
+    const fetchRoomID = async () => {
+      try {
+        const roomData = await getRoomById(roomId);
+        setRoom(roomData);
+        setImageReview(roomData.roomPhotoUrl);
+      } catch (error) {
+        toast.error(error.message);
+      }
+    };
 
-      await fetchRoom();
-      navigate("/admin/roomlist");
-      toast.success("Add room successfully!");
-    } else {
-      toast.error("Error adding room");
+    fetchRoomID();
+  }, [roomId]);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    try {
+      const response = await updateRoom(roomId, room);
+      if (response.status === 200) {
+        const updatedRoomData = await getRoomById(roomId);
+        setRoom(updatedRoomData);
+
+        setImageReview(updatedRoomData.roomPhotoUrl);
+
+        await fetchRoom();
+        navigate("/admin/roomlist");
+        toast.success("Room updated successfully!");
+      } else {
+        toast.error("Error updating room");
+      }
+    } catch (error) {
+      toast.error(error.message);
     }
-  };
+  }
 
   return (
-    <section className="p-8 relative">
+    <section className="p-8">
       <div>
-        <h2 className="font-medium text-3xl">Add New Room</h2>
+        <h2 className="font-medium text-3xl">Update Room</h2>
       </div>
       <hr className="my-5" />
       <div className="flex justify-center">
@@ -107,16 +130,17 @@ const AddRoom = () => {
           >
             <div>
               <label
-                htmlFor="status"
+                htmlFor="roomStatus"
                 className="block text-gray-700 font-medium"
               >
                 Room Status
               </label>
               <select
                 name="roomStatus" // Thêm thuộc tính name
-                value={newRoom.roomStatus}
+                value={room.roomStatus}
                 onChange={handleRoomInputChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={room.roomStatus}
                 required
               >
                 <option value="">Select room status</option>
@@ -126,12 +150,30 @@ const AddRoom = () => {
             </div>
 
             <div>
+              <label
+                htmlFor="roomDescription"
+                className="block text-gray-700 font-medium"
+              >
+                Room Description
+              </label>
+              <input
+                name="roomDescription" // Thêm thuộc tính name
+                type="text"
+                value={room.roomDescription}
+                onChange={handleRoomInputChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={room.roomDescription}
+                required
+              />
+            </div>
+
+            <div>
               <label htmlFor="type" className="block text-gray-700 font-medium">
                 Room Type
               </label>
               <select
                 name="roomType" // Thêm thuộc tính name
-                value={newRoom.roomType}
+                value={room.roomType}
                 onChange={handleRoomInputChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
@@ -156,10 +198,10 @@ const AddRoom = () => {
               <input
                 name="roomAmount" // Thêm thuộc tính name
                 type="number"
-                value={newRoom.roomAmount}
+                value={room.roomAmount}
                 onChange={handleRoomInputChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter room amount"
+                placeholder="Enter id"
                 required
               />
             </div>
@@ -174,10 +216,10 @@ const AddRoom = () => {
               <input
                 name="roomPrice" // Thêm thuộc tính name
                 type="number"
-                value={newRoom.roomPrice}
+                value={room.roomPrice}
                 onChange={handleRoomInputChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter price"
+                placeholder={room.roomPrice || "Enter price"}
                 required
               />
             </div>
@@ -192,7 +234,7 @@ const AddRoom = () => {
               <input
                 name="roomSize"
                 type="text"
-                value={newRoom.roomSize}
+                value={room.roomSize}
                 onChange={handleRoomInputChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter size"
@@ -210,7 +252,7 @@ const AddRoom = () => {
               <input
                 name="roomCapacity" // Thêm thuộc tính name
                 type="text"
-                value={newRoom.roomCapacity}
+                value={room.roomCapacity}
                 onChange={handleRoomInputChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter room capacity"
@@ -219,110 +261,30 @@ const AddRoom = () => {
             </div>
 
             <div>
-              <label
-                htmlFor="roomDescription"
-                className="block text-gray-700 font-medium"
-              >
-                Room Description
+              <label className="block text-gray-700 font-medium">
+                Facilities
               </label>
-              <textarea
-                name="roomDescription"
-                value={newRoom.roomDescription}
-                onChange={handleRoomInputChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter room description"
-                required
-              />
+              <div className="grid grid-cols-4 gap-4">
+                {facilities.map((facility) => (
+                  <label
+                    key={facility.name}
+                    className="flex items-center space-x-2"
+                  >
+                    <input
+                      type="checkbox"
+                      name={facility.name}
+                      checked={room.facility[facility.name]}
+                      onChange={handleFacilityChange}
+                    />
+                    <span className="flex items-center space-x-2">
+                      {facility.icon}
+                      <span>{facility.label}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
 
-            <label
-              htmlFor="roomCapacity"
-              className="block text-gray-700 font-medium"
-            >
-              Room Facility
-            </label>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="flex flex-col items-center">
-                <FaWifi className="text-2xl" />
-                <label className="mt-2">Wifi</label>
-                <input
-                  type="checkbox"
-                  name="wifiInfo"
-                  checked={newRoom.wifiInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-              <div className="flex flex-col items-center">
-                <FaCoffee className="text-2xl" />
-                <label className="mt-2">Coffee</label>
-                <input
-                  type="checkbox"
-                  name="coffeeInfo"
-                  checked={newRoom.coffeeInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-              <div className="flex flex-col items-center">
-                <FaBath className="text-2xl" />
-                <label className="mt-2">Bath</label>
-                <input
-                  type="checkbox"
-                  name="bathInfo"
-                  checked={newRoom.bathInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-              <div className="flex flex-col items-center">
-                <FaParking className="text-2xl" />
-                <label className="mt-2">Parking</label>
-                <input
-                  type="checkbox"
-                  name="parkingInfo"
-                  checked={newRoom.parkingInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-              <div className="flex flex-col items-center">
-                <FaSwimmingPool className="text-2xl" />
-                <label className="mt-2">Pool</label>
-                <input
-                  type="checkbox"
-                  name="poolInfo"
-                  checked={newRoom.poolInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-              <div className="flex flex-col items-center">
-                <FaHotdog className="text-2xl" />
-                <label className="mt-2">Breakfast</label>
-                <input
-                  type="checkbox"
-                  name="breakfastInfo"
-                  checked={newRoom.breakfastInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-              <div className="flex flex-col items-center">
-                <FaStopwatch className="text-2xl" />
-                <label className="mt-2">Gym</label>
-                <input
-                  type="checkbox"
-                  name="gymInfo"
-                  checked={newRoom.gymInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-              <div className="flex flex-col items-center">
-                <FaCocktail className="text-2xl" />
-                <label className="mt-2">Drink</label>
-                <input
-                  type="checkbox"
-                  name="drinkInfo"
-                  checked={newRoom.drinkInfo}
-                  onChange={handleFacilityChange}
-                />
-              </div>
-            </div>
             <div>
               <label
                 htmlFor="roomPhotoUrl"
@@ -336,7 +298,6 @@ const AddRoom = () => {
                 onChange={handleImageChange}
                 className="w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 py-6"
                 accept="image/*"
-                required
               />
 
               {imageReview && (
@@ -360,7 +321,7 @@ const AddRoom = () => {
                 type="submit"
                 className="bg-accent text-white py-2 px-4 rounded-lg font-semibold hover:opacity-60 transition-all"
               >
-                Add Room
+                Update Room
               </button>
             </div>
           </form>
@@ -370,4 +331,4 @@ const AddRoom = () => {
   );
 };
 
-export default AddRoom;
+export default UpdateRoom;
